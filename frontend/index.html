@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Dirty Espionage</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <header class="top-bar">
+    <div class="brand">
+      <h1>DIRTY ESPIONAGE</h1>
+      <p class="tagline">3 operatives · 1 imposter · 15 intel drops</p>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="icon-btn" id="muteBtn" title="Toggle audio" aria-label="Toggle mute">🔊</button>
+      <div class="profile-chip hidden" id="profileChip">
+        <span class="profile-dot"></span>
+        <span id="profileName">—</span>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Offline</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- ONBOARDING -->
+    <section id="screenOnboard" class="panel neon-border">
+      <h2 class="panel-title">Operative Registration</h2>
+      <p class="muted">Enter your designated call sign. Stored locally on this device.</p>
+      <form id="onboardForm" class="stack-form">
+        <input type="text" id="usernameInput" placeholder="Guest codename…" maxlength="32" autocomplete="username" required />
+        <button type="submit" class="btn btn-cyan">Enter the Lounge</button>
+      </form>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="screenDashboard" class="hidden">
+      <div class="panel neon-border">
+        <h2 class="panel-title">Mission Control</h2>
+        <p class="muted">Welcome, <strong id="dashboardName">—</strong>. Create a private room or join with a shared code.</p>
+        <div class="action-grid">
+          <button type="button" class="btn btn-cyan btn-lg" id="createRoomBtn">Create Room</button>
+          <button type="button" class="btn btn-magenta btn-lg" id="showJoinBtn">Join Room</button>
+        </div>
+        <form id="joinForm" class="stack-form hidden join-panel">
+          <input type="text" id="joinCodeInput" placeholder="ROOM-XYZ" maxlength="8" autocapitalize="characters" />
+          <button type="submit" class="btn btn-magenta">Connect to Room</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- LOBBY -->
+    <section id="screenLobby" class="hidden">
+      <div class="panel neon-border">
+        <div class="lobby-header">
+          <div>
+            <h2 class="panel-title">Pre-Game Lounge</h2>
+            <p class="room-code-display">CODE: <span id="roomCodeLabel">—</span></p>
+          </div>
+          <button type="button" class="btn btn-danger btn-sm" id="leaveRoomBtn">Leave Room</button>
+        </div>
+        <p class="lobby-count"><span id="lobbyCount">0</span> / 3 operatives</p>
+        <ul class="lobby-list" id="lobbyList"></ul>
+        <p class="muted small">Real names visible here only. Codenames assigned when the match starts.</p>
+        <button type="button" class="btn btn-cyan" id="startGameBtn" disabled>START MISSION</button>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="screenGame" class="hidden game-layout">
+      <div class="panel dossier-panel" id="dossierPanel">
+        <div class="dossier-stamp">CONFIDENTIAL</div>
+        <h2 class="panel-title mono">Classified Dossier</h2>
+        <div class="player-info">
+          <p class="alias-label">YOUR CODENAME</p>
+          <p class="alias-display" id="myAlias">—</p>
+        </div>
+        <div class="dossier-revealed" id="dossierRevealed">
+          <p class="word-label">YOUR ASSIGNMENT</p>
+          <p class="secret-word" id="secretWord">—</p>
+        </div>
+      </div>
+
+      <div class="turn-row">
+        <div class="turn-banner" id="turnBanner">Awaiting transmission…</div>
+        <div class="timer-wrap" id="timerWrap">
+          <svg class="timer-ring" viewBox="0 0 36 36">
+            <path class="timer-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="timer-fill" id="timerFill" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="timer-text" id="timerText">30</span>
+        </div>
+      </div>
+
+      <div class="typing-indicator hidden" id="typingIndicator">
+        <span class="typing-alias" id="typingAlias">—</span> transmitting
+        <span class="dots"><span></span><span></span><span></span></span>
+      </div>
+
+      <div class="panel terminal-panel">
+        <h2 class="panel-title mono">// INTEL_FEED <span id="roundLabel"></span></h2>
+        <div class="terminal-feed" id="history"></div>
+      </div>
+
+      <div class="panel input-panel" id="inputPanel">
+        <h2 class="panel-title mono">// TRANSMIT</h2>
+        <form id="sentenceForm" class="stack-form">
+          <textarea id="sentenceInput" placeholder="Write your sentence here..." maxlength="150" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+          <div class="input-meta">
+            <span class="char-count"><span id="charCount">0</span>/150</span>
+            <button type="submit" class="btn btn-cyan" id="submitBtn" disabled>Lock Sentence</button>
+            <button type="button" class="btn btn-danger btn-sm" id="skipBtn" disabled>Skip Turn</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- VOTING -->
+    <section id="screenVoting" class="hidden">
+      <div class="panel neon-border magenta">
+        <h2 class="panel-title">Accusation Protocol</h2>
+        <p class="muted">Vote for the operative with the unique word. Self-votes disabled.</p>
+        <p id="voteProgress" class="vote-progress"></p>
+        <div id="voteButtons"></div>
+        <button type="button" class="btn btn-danger btn-sm leave-inline" id="leaveRoomBtnVote">Leave Room</button>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Intel Archive — By Codename</h2>
+        <div class="alias-columns" id="groupedHistory"></div>
+      </div>
+    </section>
+
+    <!-- DECRYPT OVERLAY -->
+    <div id="decryptOverlay" class="overlay hidden">
+      <div class="decrypt-box">
+        <p class="decrypt-title mono">DECRYPTING IDENTITIES</p>
+        <p class="decrypt-count" id="decryptCount">3</p>
+        <div class="decrypt-bar"><div class="decrypt-bar-fill" id="decryptBar"></div></div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <section id="screenResults" class="hidden">
+      <div class="panel">
+        <h2 class="panel-title">Declassified Dossiers</h2>
+        <p id="pairReveal" class="muted"></p>
+        <div class="flip-grid" id="resultGrid"></div>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Vote Transcript</h2>
+        <div id="voteBreakdown" class="terminal-feed"></div>
+      </div>
+      <div class="panel">
+        <h2 class="panel-title">Full Intel — By Codename</h2>
+        <div class="alias-columns" id="groupedHistoryResults"></div>
+      </div>
+      <button type="button" class="btn btn-cyan" id="backDashboardBtn">Return to Mission Control</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/static/audio.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
