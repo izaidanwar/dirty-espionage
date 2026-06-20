@@ -116,6 +116,14 @@ function updateProfileChip() {
 }
 
 function wsUrl() {
+  // Check if backend URL is configured (for Vercel + Railway deployment)
+  const backendUrl = window.BACKEND_URL || "";
+  if (backendUrl) {
+    const p = backendUrl.startsWith("https") ? "wss:" : "ws:";
+    const host = backendUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    return `${p}//${host}/ws`;
+  }
+  // Default: use current host (for local development or single-domain deployment)
   const p = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${p}//${window.location.host}/ws`;
 }
