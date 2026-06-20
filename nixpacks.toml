@@ -5,6 +5,17 @@ python = {}
 nixPkgs = ["python311"]
 
 [phases.install]
+cmds = ["python -m pip install -r requirements.txt"]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+[providers]
+python = {}
+
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
 cmds = ["cd backend && python -m pip install -r requirements.txt"]
 
 [start]
