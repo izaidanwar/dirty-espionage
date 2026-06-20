@@ -12,8 +12,6 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from game import RoomManager
 
@@ -34,19 +32,14 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Dirty Espionage", version="2.0.0", lifespan=lifespan)
 
-# Enable CORS for all origins (allow deployment on any domain)
+# Enable CORS for Vercel frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for deployment
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/")
-async def serve_index() -> FileResponse:
-    return FileResponse(FRONTEND_DIR / "index.html")
 
 
 @app.get("/health")
@@ -163,7 +156,3 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     finally:
         if player_id and joined and not voluntary_leave:
             await rooms.disconnect(player_id)
-
-
-if FRONTEND_DIR.is_dir():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
