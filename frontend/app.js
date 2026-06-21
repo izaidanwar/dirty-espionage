@@ -209,41 +209,28 @@ function renderLobby(data) {
 }
 
 function updateTurnUI() {
-  const isMyTurn = currentPlayerId === playerId && phase === "ROUND_LOOP";
-  const current = players.find((p) => p.id === currentPlayerId);
+  const isFreeChat = phase === "FREE_CHAT";
   const input = $("sentenceInput");
   const submit = $("submitBtn");
-  const skip = $("skipBtn");
+  const readyToVote = $("readyToVoteBtn");
   const banner = $("turnBanner");
   const panel = $("inputPanel");
   const roundLabel = $("roundLabel");
 
-  // Don't disable input on mobile - prevent submission instead
-  submit.disabled = !isMyTurn;
-  skip.disabled = !isMyTurn;
-  roundLabel.textContent = phase === "ROUND_LOOP" ? `[R${currentRound}/5]` : "";
+  // In free chat mode, input is always enabled
+  submit.disabled = false;
+  readyToVote.disabled = false;
+  roundLabel.textContent = phase === "FREE_CHAT" ? `[R${currentRound}/5]` : "";
 
   // Visual indication for input state
-  if (!isMyTurn) {
-    input.style.opacity = "0.5";
-  } else {
-    input.style.opacity = "1";
-  }
+  input.style.opacity = "1";
 
-  panel.classList.toggle("pulse-active", isMyTurn);
+  panel.classList.toggle("pulse-active", isFreeChat);
 
-  if (phase !== "ROUND_LOOP") {
-    banner.className = "turn-banner";
-    return;
-  }
-
-  if (isMyTurn) {
+  if (phase === "FREE_CHAT") {
     banner.className = "turn-banner active";
-    banner.textContent = "YOUR TURN — transmit one sentence.";
+    banner.textContent = "Free Chat — Discuss and write sentences freely!";
     setTimeout(() => input.focus(), 100);
-  } else if (current) {
-    banner.className = "turn-banner";
-    banner.textContent = `Awaiting ${current.alias}'s transmission…`;
   } else {
     banner.className = "turn-banner";
     banner.textContent = "Stand by…";
@@ -311,6 +298,37 @@ function renderVoteButtons() {
   }
 }
 
+function renderSuggestions(suggestions) {
+  const container = $("suggestionList");
+  if (!container) return;
+  container.innerHTML = "";
+  suggestions.forEach(suggestion => {
+    const div = document.createElement("div");
+    div.className = "suggestion-item";
+    div.textContent = suggestion;
+    container.appendChild(div);
+  });
+}
+
+function updateVoteReadyStatus(readyCount, totalPlayers) {
+  const readyToVoteBtn = $("readyToVoteBtn");
+  if (!readyToVoteBtn) return;
+  if (readyCount >= totalPlayers) {
+    readyToVoteBtn.textContent = "All Ready — Starting Voting...";
+    readyToVoteBtn.disabled = true;
+  } else {
+    readyToVoteBtn.textContent = `Go for Voting (${readyCount}/${totalPlayers})`;
+  }
+}
+
+function handleRematchReady() {
+  showScreen("lobby");
+  phase = "LOBBY";
+  history = [];
+  hasVoted = false;
+  showToast("Ready for rematch!");
+}
+
 function showDecryptCountdown(seconds, onDone) {
   decryptOverlay.classList.remove("hidden");
   let left = seconds;
@@ -337,6 +355,12 @@ function revealResultCards(data) {
 
   const grid = $("resultGrid");
   grid.innerHTML = "";
+
+  // Show rematch button for host
+  const rematchBtn = $("rematchBtn");
+  if (rematchBtn) {
+    rematchBtn.style.display = "block";
+  }
 
   if (data.imposterWon) AudioEngine.glitch();
   else if (data.players.some((p) => p.id === playerId && p.score === 2)) AudioEngine.chime();
@@ -521,6 +545,18 @@ function handleMessage(data) {
       }
       break;
 
+    case "suggestion_prompts":
+      renderSuggestions(data.suggestions || []);
+      break;
+
+    case "vote_ready_update":
+      updateVoteReadyStatus(data.readyCount, data.totalPlayers);
+      break;
+
+    case "rematch_ready":
+      handleRematchReady();
+      break;
+
     case "turn_update":
       phase = data.phase;
       currentPlayerId = data.currentPlayerId;
@@ -654,6 +690,14 @@ $("startGameBtn").addEventListener("click", () => {
 
 $("skipBtn").addEventListener("click", () => {
   send({ type: "skip_turn" });
+});
+
+$("readyToVoteBtn").addEventListener("click", () => {
+  send({ type: "ready_to_vote" });
+});
+
+$("rematchBtn").addEventListener("click", () => {
+  send({ type: "rematch" });
 });
 
 $("backDashboardBtn").addEventListener("click", () => {
