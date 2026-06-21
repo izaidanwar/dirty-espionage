@@ -133,6 +133,7 @@ class GameRoom:
     max_players: int = 3
     _timer_task: asyncio.Task[None] | None = field(default=None, repr=False)
     ready_to_vote: dict[str, bool] = field(default_factory=dict)
+    empty_since: float | None = field(default=None, repr=False)
 
     def occupied_count(self) -> int:
         return len(self.players)
@@ -616,6 +617,13 @@ class RoomManager:
         now = time.time()
         to_delete: list[str] = []
         for code, room in self.rooms.items():
+            # Track when room becomes empty
+            if room.connected_count() == 0 and room.empty_since is None:
+                room.empty_since = now
+            elif room.connected_count() > 0:
+                room.empty_since = None
+
+            # Remove players who have been disconnected too long
             for pid in list(room.players):
                 slot = room.players[pid]
                 if (
@@ -626,11 +634,15 @@ class RoomManager:
                     room.players.pop(pid, None)
                     self.player_room.pop(pid, None)
 
+            # Delete room if no players
             if not room.players:
                 to_delete.append(code)
                 continue
+
+            # Delete empty lobby rooms after 2 minutes (was immediate)
             if room.connected_count() == 0 and room.phase == Phase.LOBBY:
-                to_delete.append(code)
+                if room.empty_since and now - room.empty_since > 120:
+                    to_delete.append(code)
 
         for code in to_delete:
             room = self.rooms.pop(code, None)
@@ -679,6 +691,7 @@ class RoomManager:
             for msg in room.sync_state_for(player_id):
                 await self.send(room, player_id, msg)
             await self.broadcast_lobby(room)
+            logger.info("Player %s reconnected to room %s", player_id, code)
             return room, None
 
         if room.occupied_count() >= room.max_players:
@@ -694,6 +707,7 @@ class RoomManager:
         await self.send_room_state(room, player_id)
         await self.broadcast_lobby(room)
 
+        logger.info("Player %s joined room %s. Total players: %d", player_id, code, room.occupied_count())
         return room, None
 
     async def reconnect(
