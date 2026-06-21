@@ -273,9 +273,9 @@ function renderSuggestions(suggestions) {
   const input = $("sentenceInput");
   if (!input) return;
   if (suggestions && suggestions.length > 0) {
-    // Cycle through suggestions as placeholder
-    const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
-    input.placeholder = `Try: ${randomSuggestion}`;
+    // Show all suggestions in placeholder
+    const allSuggestions = suggestions.join(" | ");
+    input.placeholder = allSuggestions;
   } else {
     input.placeholder = "Write your sentence here...";
   }
@@ -765,7 +765,9 @@ function attachGameButtonListeners() {
     console.log("Attaching ready to vote button listener");
     readyToVoteBtn.addEventListener("click", () => {
       console.log("Ready to vote button clicked");
+      console.log("Current phase:", phase);
       send({ type: "ready_to_vote" });
+      console.log("Sent ready_to_vote message");
     });
     readyToVoteBtn.setAttribute('data-listener-attached', 'true');
   }

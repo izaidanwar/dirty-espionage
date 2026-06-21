@@ -41,7 +41,9 @@ class Phase(str, Enum):
 
 def load_word_pairs() -> list[dict[str, str]]:
     with WORD_PAIRS_PATH.open(encoding="utf-8") as fh:
-        return json.load(fh)
+        pairs = json.load(fh)
+        random.shuffle(pairs)
+        return pairs
 
 
 def validate_sentence(text: str) -> tuple[bool, str]:
