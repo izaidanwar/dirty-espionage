@@ -527,11 +527,10 @@ function handleMessage(data) {
       renderSuggestions(data.suggestions || []);
       break;
 
-    case "vote_ready_update":
-      updateVoteReadyStatus(data.readyCount, data.totalPlayers);
+    case "player_ready_to_vote":
       const player = players.find(p => p.id === data.playerId);
       if (player) {
-        showToast(`${player.alias} is ready to vote!`);
+        showToast(`${player.alias} is ready to vote`);
       }
       break;
 
@@ -595,6 +594,15 @@ function handleMessage(data) {
 
     case "vote_progress":
       $("voteProgress").textContent = `Votes: ${data.votesCast} / ${data.votesNeeded}`;
+      const voteProgressWaiting = $("voteProgressWaiting");
+      if (voteProgressWaiting) {
+        voteProgressWaiting.textContent = `Votes: ${data.votesCast} / ${data.votesNeeded}`;
+      }
+      break;
+
+    case "vote_confirmed":
+      hasVoted = true;
+      showScreen("voteWaiting");
       break;
 
     case "reveal_countdown":
@@ -673,6 +681,7 @@ $("joinForm").addEventListener("submit", (e) => {
 
 $("leaveRoomBtn").addEventListener("click", leaveRoom);
 $("leaveRoomBtnVote")?.addEventListener("click", leaveRoom);
+$("leaveRoomBtnVoteWaiting")?.addEventListener("click", leaveRoom);
 
 // startGameBtn listener moved to attachGameButtonListeners function
 

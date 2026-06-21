@@ -384,18 +384,8 @@ class GameRoom:
         if player_id not in self.players:
             return
 
-        self.ready_to_vote[player_id] = True
-        await self.broadcast(
-            {
-                "type": "vote_ready_update",
-                "playerId": player_id,
-                "readyCount": len(self.ready_to_vote),
-                "totalPlayers": len(self.players),
-            }
-        )
-
-        if len(self.ready_to_vote) >= len(self.players):
-            await self.begin_voting()
+        # Immediately start voting for this player
+        await self.begin_voting_for_player(player_id)
 
     async def handle_rematch(self, player_id: str) -> None:
         if self.phase != Phase.REVEAL_SCORING:
@@ -445,6 +435,30 @@ class GameRoom:
             }
         )
 
+    async def begin_voting_for_player(self, player_id: str) -> None:
+        # Notify all players that someone is ready to vote
+        player = self.players.get(player_id)
+        if player:
+            await self.broadcast(
+                {
+                    "type": "player_ready_to_vote",
+                    "playerId": player_id,
+                    "playerAlias": player.alias,
+                }
+            )
+
+        # Send voting start to this player only
+        await self.send(
+            player_id,
+            {
+                "type": "voting_start",
+                "phase": Phase.VOTING.value,
+                "players": self.game_roster(),
+                "history": self.history_payload(),
+                "groupedHistory": self.grouped_history(),
+            }
+        )
+
     def grouped_history(self) -> dict[str, list[dict[str, Any]]]:
         active_aliases = ALIASES[:self.max_players]
         groups: dict[str, list[dict[str, Any]]] = {a: [] for a in active_aliases}
@@ -455,7 +469,7 @@ class GameRoom:
         return groups
 
     async def handle_cast_vote(self, player_id: str, target_id: str) -> None:
-        if self.phase != Phase.VOTING:
+        if self.phase != Phase.VOTING and self.phase != Phase.FREE_CHAT:
             await self.send(player_id, {"type": "error", "message": "Voting is not open."})
             return
         if target_id == player_id:
@@ -469,14 +483,25 @@ class GameRoom:
             return
 
         self.votes[player_id] = target_id
+
+        # Set phase to voting if not already
+        if self.phase == Phase.FREE_CHAT:
+            self.phase = Phase.VOTING
+
+        # Send vote confirmation to the voter
+        await self.send(player_id, {"type": "vote_confirmed", "targetId": target_id})
+
+        # Broadcast vote progress
         await self.broadcast(
             {
                 "type": "vote_progress",
                 "votesCast": len(self.votes),
-                "votesNeeded": self.max_players,
+                "votesNeeded": len(self.players),
             }
         )
-        if len(self.votes) >= self.max_players:
+
+        # Check if all active players have voted
+        if len(self.votes) >= len(self.players):
             await self.broadcast({"type": "reveal_countdown", "seconds": 3})
             await asyncio.sleep(3)
             await self.reveal_and_score()
