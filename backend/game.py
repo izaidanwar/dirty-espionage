@@ -378,13 +378,17 @@ class GameRoom:
             )
 
     async def handle_ready_to_vote(self, player_id: str) -> None:
+        logger.info(f"Player {player_id} clicked ready to vote")
         if self.phase != Phase.FREE_CHAT:
+            logger.warning(f"Player {player_id} tried to vote in phase {self.phase}")
             await self.send(player_id, {"type": "error", "message": "Not in free chat phase."})
             return
         if player_id not in self.players:
+            logger.warning(f"Player {player_id} not found in room")
             return
 
         # Immediately start voting for this player
+        logger.info(f"Starting voting for player {player_id}")
         await self.begin_voting_for_player(player_id)
 
     async def handle_rematch(self, player_id: str) -> None:

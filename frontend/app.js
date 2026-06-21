@@ -772,9 +772,12 @@ function attachGameButtonListeners() {
   const readyToVoteBtn = $("readyToVoteBtn");
   if (readyToVoteBtn && !readyToVoteBtn.hasAttribute('data-listener-attached')) {
     console.log("Attaching ready to vote button listener");
-    readyToVoteBtn.addEventListener("click", () => {
+    readyToVoteBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       console.log("Ready to vote button clicked");
       console.log("Current phase:", phase);
+      console.log("Socket state:", socket?.readyState);
       send({ type: "ready_to_vote" });
       console.log("Sent ready_to_vote message");
     });
