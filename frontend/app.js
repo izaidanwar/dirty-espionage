@@ -771,7 +771,7 @@ $("sentenceInput").addEventListener("click", (e) => {
   }
 });
 
-$("sentenceForm").addEventListener("submit", (e) => {
+$("submitBtn").addEventListener("click", (e) => {
   e.preventDefault();
   const text = $("sentenceInput").value.trim();
   if (!text || currentPlayerId !== playerId) return;
