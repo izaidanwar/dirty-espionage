@@ -21,8 +21,8 @@ from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
-ALIASES = ["Alpha", "Bravo", "Charlie"]
-ALIAS_COLORS = ["#66FCF1", "#45A29E", "#ff2d6a"]
+ALIASES = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"]
+ALIAS_COLORS = ["#66FCF1", "#45A29E", "#ff2d6a", "#9B59B6", "#F39C12"]
 MAX_PLAYERS = 3
 MAX_ROUNDS = 5
 MAX_SENTENCE_LEN = 150
@@ -64,11 +64,13 @@ def calculate_scores(
 
     for agent_id in agent_ids:
         my_vote = votes.get(agent_id)
-        fellow_id = agent_ids[0] if agent_ids[1] == agent_id else agent_ids[1]
-        fellow_vote = votes.get(fellow_id)
-        if my_vote == imposter_id and fellow_vote == imposter_id:
+        # Count how many fellow agents also voted for the imposter
+        fellow_correct = sum(
+            1 for aid in agent_ids if aid != agent_id and votes.get(aid) == imposter_id
+        )
+        if my_vote == imposter_id and fellow_correct == len(agent_ids) - 1:
             scores[agent_id] = 2
-        elif my_vote == imposter_id and fellow_vote == agent_id:
+        elif my_vote == imposter_id:
             scores[agent_id] = 1
         else:
             scores[agent_id] = 0
@@ -128,6 +130,7 @@ class GameRoom:
     agents_get_dirty: bool = True
     imposter_id: str = ""
     turn_deadline: float = 0.0
+    max_players: int = 3
     _timer_task: asyncio.Task[None] | None = field(default=None, repr=False)
 
     def occupied_count(self) -> int:
@@ -202,7 +205,7 @@ class GameRoom:
             "currentPlayerId": current,
             "currentAlias": current_player.round_alias if current_player else None,
             "turnNumber": len(self.sentences) + 1,
-            "totalTurns": MAX_ROUNDS * MAX_PLAYERS,
+            "totalTurns": MAX_ROUNDS * self.max_players,
             "turnDeadline": self.turn_deadline,
             "turnTimeoutSec": TURN_TIMEOUT_SEC,
         }
@@ -219,7 +222,8 @@ class GameRoom:
 
         self.word_pair = random.choice(load_word_pairs())
         self.agents_get_dirty = random.choice([True, False])
-        imposter_index = random.randrange(MAX_PLAYERS)
+        num_players = len(shuffled)
+        imposter_index = random.randrange(num_players)
         self.imposter_id = shuffled[imposter_index]
 
         for pid in shuffled:
@@ -298,9 +302,9 @@ class GameRoom:
     async def advance_turn(self) -> None:
         self.cancel_timer()
         self.current_turn_index += 1
-        if self.current_turn_index % MAX_PLAYERS == 0:
+        if self.current_turn_index % self.max_players == 0:
             self.round_num += 1
-        if len(self.sentences) >= MAX_ROUNDS * MAX_PLAYERS:
+        if len(self.sentences) >= MAX_ROUNDS * self.max_players:
             await self.begin_voting()
         else:
             await self.begin_turn()
@@ -375,7 +379,8 @@ class GameRoom:
         )
 
     def grouped_history(self) -> dict[str, list[dict[str, Any]]]:
-        groups: dict[str, list[dict[str, Any]]] = {a: [] for a in ALIASES}
+        active_aliases = ALIASES[:self.max_players]
+        groups: dict[str, list[dict[str, Any]]] = {a: [] for a in active_aliases}
         for s in self.sentences:
             groups.setdefault(s.alias, []).append(
                 {"round": s.round_num, "text": s.text, "skipped": s.skipped}
@@ -401,10 +406,10 @@ class GameRoom:
             {
                 "type": "vote_progress",
                 "votesCast": len(self.votes),
-                "votesNeeded": MAX_PLAYERS,
+                "votesNeeded": self.max_players,
             }
         )
-        if len(self.votes) >= MAX_PLAYERS:
+        if len(self.votes) >= self.max_players:
             await self.broadcast({"type": "reveal_countdown", "seconds": 3})
             await asyncio.sleep(3)
             await self.reveal_and_score()
@@ -472,7 +477,7 @@ class GameRoom:
                 "isHost": player_id == self.host_id,
                 "roster": self.lobby_roster() if self.phase == Phase.LOBBY else self.game_roster(),
                 "count": self.occupied_count(),
-                "needed": MAX_PLAYERS,
+                "needed": self.max_players,
             }
         ]
         if self.phase == Phase.LOBBY:
@@ -513,7 +518,7 @@ class GameRoom:
                 {
                     "type": "vote_progress",
                     "votesCast": len(self.votes),
-                    "votesNeeded": MAX_PLAYERS,
+                    "votesNeeded": self.max_players,
                 }
             )
         elif self.phase == Phase.REVEAL_SCORING:
@@ -568,14 +573,19 @@ class RoomManager:
         return self.rooms.get(code.upper())
 
     async def create_room(
-        self, player_id: str, real_name: str, websocket: WebSocket
+        self, player_id: str, real_name: str, websocket: WebSocket, max_players: int = 3
     ) -> GameRoom:
         code = generate_room_code()
         while code in self.rooms:
             code = generate_room_code()
 
         slot = PlayerSlot(player_id=player_id, real_name=real_name, websocket=websocket)
-        room = GameRoom(code=code, host_id=player_id, players={player_id: slot})
+        room = GameRoom(
+            code=code,
+            host_id=player_id,
+            players={player_id: slot},
+            max_players=max_players,
+        )
         self.rooms[code] = room
         self.player_room[player_id] = code
 
@@ -600,8 +610,8 @@ class RoomManager:
             await self.broadcast_lobby(room)
             return room, None
 
-        if room.occupied_count() >= MAX_PLAYERS:
-            return None, "Room is full. Maximum 3 operatives per room."
+        if room.occupied_count() >= room.max_players:
+            return None, f"Room is full. Maximum {room.max_players} operatives per room."
 
         if room.phase != Phase.LOBBY:
             return None, "Game already in progress. Reconnect with your saved session."
@@ -708,7 +718,7 @@ class RoomManager:
                 "isHost": player_id == room.host_id,
                 "roster": room.lobby_roster(),
                 "count": room.occupied_count(),
-                "needed": MAX_PLAYERS,
+                "needed": room.max_players,
             },
         )
 
@@ -722,7 +732,7 @@ class RoomManager:
                 "phase": room.phase.value,
                 "waiting": room.lobby_roster(),
                 "count": room.occupied_count(),
-                "needed": MAX_PLAYERS,
+                "needed": room.max_players,
             }
         )
 
@@ -750,7 +760,7 @@ class RoomManager:
             return
         if room.phase != Phase.LOBBY:
             return
-        if room.occupied_count() < MAX_PLAYERS:
+        if room.occupied_count() < room.max_players:
             return
         await room.start_game()
 

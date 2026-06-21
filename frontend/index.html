@@ -11,6 +11,288 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+  <!-- STATUS BAR (fixed top) -->
+  <header class="top-bar">
+    <div class="top-actions">
+      <button type="button" class="icon-btn" id="muteBtn" title="Toggle audio" aria-label="Toggle mute">🔊</button>
+      <div class="status-pill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Offline</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ===================== PAGE 1: ONBOARDING ===================== -->
+    <section id="screenOnboard" class="screen-center">
+      <!-- Shield Logo -->
+      <div class="shield-logo">
+        <svg viewBox="0 0 80 96" width="80" height="96">
+          <defs>
+            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#7B2FBE"/>
+              <stop offset="100%" style="stop-color:#4A1A7A"/>
+            </linearGradient>
+          </defs>
+          <path d="M40 2 L76 18 L76 50 Q76 78 40 94 Q4 78 4 50 L4 18 Z" fill="url(#shieldGrad)" stroke="#9B59B6" stroke-width="2.5"/>
+          <text x="40" y="48" text-anchor="middle" fill="white" font-family="Orbitron" font-size="16" font-weight="700">D.E.</text>
+          <text x="40" y="62" text-anchor="middle" fill="#E75480" font-size="10">♥</text>
+          <!-- Dagger -->
+          <line x1="12" y1="78" x2="68" y2="60" stroke="#C0C0C0" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="12" cy="78" r="4" fill="#CC3333"/>
+        </svg>
+      </div>
+
+      <!-- Title -->
+      <h1 class="game-title">DIRTY ESPI<span class="title-magnifier">🔍</span>NAGE</h1>
+
+      <!-- Nickname Card -->
+      <div class="card card-teal">
+        <h2 class="card-label">AGENT NICKNAME</h2>
+        <form id="onboardForm" class="stack-form">
+          <input type="text" id="usernameInput" placeholder="e.g., Maverick" maxlength="32" autocomplete="username" required />
+          <button type="submit" class="btn btn-pink">GET STARTED ❤️</button>
+        </form>
+      </div>
+
+      <!-- Game Rules Link -->
+      <button type="button" class="rules-link" id="rulesBtnOnboard">📋 View Game Rules</button>
+
+      <footer class="site-footer">Made by ZAK</footer>
+    </section>
+
+    <!-- ===================== PAGE 2: DASHBOARD ===================== -->
+    <section id="screenDashboard" class="hidden">
+      <!-- Title -->
+      <h1 class="game-title">DIRTY ESPI<span class="title-magnifier">🔍</span>NAGE</h1>
+
+      <!-- Nickname Pill -->
+      <div class="nickname-pill" id="nicknamePill">
+        <span class="pill-label">Nickname:</span> <strong id="dashboardName">—</strong>
+      </div>
+
+      <!-- START A GAME Card (Teal) -->
+      <div class="card card-teal">
+        <h2 class="card-label">START A GAME</h2>
+        <div class="player-count-selector">
+          <label>Players:</label>
+          <div class="count-options">
+            <button type="button" class="count-btn active" data-count="3">3</button>
+            <button type="button" class="count-btn" data-count="4">4</button>
+            <button type="button" class="count-btn" data-count="5">5</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-teal btn-lg" id="createRoomBtn">
+          CREATE PRIVATE ROOM <span class="plus-icon">+</span>
+        </button>
+      </div>
+
+      <!-- JOIN A GAME Card (Purple) -->
+      <div class="card card-purple">
+        <h2 class="card-label">JOIN A GAME</h2>
+        <form id="joinForm" class="stack-form">
+          <input type="text" id="joinCodeInput" placeholder="CODE: ROOM-XYZ" maxlength="8" autocapitalize="characters" />
+          <button type="submit" class="btn btn-teal">CONNECT</button>
+        </form>
+      </div>
+
+      <!-- Game Rules -->
+      <button type="button" class="rules-link" id="rulesBtnDashboard">📋 View Game Rules</button>
+
+      <footer class="site-footer">Made by ZAK</footer>
+    </section>
+
+    <!-- ===================== LOBBY (Pre-Game) ===================== -->
+    <section id="screenLobby" class="hidden">
+      <h1 class="game-title game-title-sm">DIRTY ESPI<span class="title-magnifier">🔍</span>NAGE</h1>
+
+      <div class="card card-teal">
+        <div class="lobby-header">
+          <div>
+            <h2 class="card-label">PRE-GAME LOUNGE</h2>
+            <p class="room-code-display">CODE: <span id="roomCodeLabel">—</span></p>
+          </div>
+          <div class="profile-chip" id="profileChip">
+            <span class="profile-dot"></span>
+            <span id="profileName">—</span>
+          </div>
+        </div>
+        <p class="lobby-count"><span id="lobbyCount">0</span> / <span id="lobbyNeeded">3</span> operatives</p>
+        <ul class="lobby-list" id="lobbyList"></ul>
+        <p class="muted small">Real names visible here only. Codenames assigned when the match starts.</p>
+        <button type="button" class="btn btn-pink" id="startGameBtn" disabled>START MISSION</button>
+      </div>
+
+      <button type="button" class="btn btn-danger btn-lg btn-leave" id="leaveRoomBtn">LEAVE ROOM 😜</button>
+      <footer class="site-footer">Made by ZAK</footer>
+    </section>
+
+    <!-- ===================== GAME SCREEN (Writing Round) ===================== -->
+    <section id="screenGame" class="hidden game-layout">
+      <h1 class="game-title game-title-sm">DIRTY ESPI<span class="title-magnifier">🔍</span>NAGE</h1>
+
+      <!-- Dossier Panel -->
+      <div class="card card-dossier" id="dossierPanel">
+        <div class="dossier-stamp">CONFIDENTIAL</div>
+        <h2 class="card-label">CLASSIFIED DOSSIER</h2>
+        <div class="player-info">
+          <p class="alias-label">YOUR CODENAME</p>
+          <p class="alias-display" id="myAlias">—</p>
+        </div>
+        <div class="dossier-revealed" id="dossierRevealed">
+          <p class="word-label">YOUR ASSIGNMENT</p>
+          <p class="secret-word" id="secretWord">—</p>
+        </div>
+      </div>
+
+      <!-- Turn + Timer -->
+      <div class="turn-row">
+        <div class="turn-banner" id="turnBanner">Awaiting transmission…</div>
+        <div class="timer-wrap" id="timerWrap">
+          <svg class="timer-ring" viewBox="0 0 36 36">
+            <path class="timer-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="timer-fill" id="timerFill" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="timer-text" id="timerText">30</span>
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div class="typing-indicator hidden" id="typingIndicator">
+        <span class="typing-alias" id="typingAlias">—</span> transmitting
+        <span class="dots"><span></span><span></span><span></span></span>
+      </div>
+
+      <!-- Chat/Intel Feed -->
+      <div class="card card-chat">
+        <h2 class="card-label mono">// INTEL_FEED <span id="roundLabel"></span></h2>
+        <div class="terminal-feed" id="history"></div>
+      </div>
+
+      <!-- Input Panel -->
+      <div class="card card-input" id="inputPanel">
+        <h2 class="card-label mono">// TRANSMIT</h2>
+        <form id="sentenceForm" class="stack-form">
+          <textarea id="sentenceInput" placeholder="Write your sentence here..." maxlength="150" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+          <div class="input-meta">
+            <span class="char-count"><span id="charCount">0</span>/150</span>
+            <button type="submit" class="btn btn-teal" id="submitBtn" disabled>Lock Sentence</button>
+            <button type="button" class="btn btn-danger btn-sm" id="skipBtn" disabled>Skip Turn</button>
+          </div>
+        </form>
+      </div>
+
+      <footer class="site-footer">Made by ZAK</footer>
+    </section>
+
+    <!-- ===================== VOTING ===================== -->
+    <section id="screenVoting" class="hidden">
+      <h1 class="game-title game-title-sm">DIRTY ESPI<span class="title-magnifier">🔍</span>NAGE</h1>
+
+      <div class="card card-purple">
+        <h2 class="card-label">ACCUSATION PROTOCOL</h2>
+        <p class="muted">Vote for the operative with the unique word. Self-votes disabled.</p>
+        <p id="voteProgress" class="vote-progress"></p>
+        <div id="voteButtons"></div>
+      </div>
+
+      <div class="card card-teal">
+        <h2 class="card-label">INTEL ARCHIVE — BY CODENAME</h2>
+        <div class="alias-columns" id="groupedHistory"></div>
+      </div>
+
+      <button type="button" class="btn btn-danger btn-lg btn-leave" id="leaveRoomBtnVote">LEAVE ROOM 😜</button>
+      <footer class="site-footer">Made by ZAK</footer>
+    </section>
+
+    <!-- ===================== DECRYPT OVERLAY ===================== -->
+    <div id="decryptOverlay" class="overlay hidden">
+      <div class="decrypt-box">
+        <p class="decrypt-title mono">DECRYPTING IDENTITIES</p>
+        <p class="decrypt-count" id="decryptCount">3</p>
+        <div class="decrypt-bar"><div class="decrypt-bar-fill" id="decryptBar"></div></div>
+      </div>
+    </div>
+
+    <!-- ===================== RESULTS ===================== -->
+    <section id="screenResults" class="hidden">
+      <h1 class="game-title game-title-sm">DIRTY ESPI<span class="title-magnifier">🔍</span>NAGE</h1>
+
+      <div class="card card-teal">
+        <h2 class="card-label">DECLASSIFIED DOSSIERS</h2>
+        <p id="pairReveal" class="muted"></p>
+        <div class="flip-grid" id="resultGrid"></div>
+      </div>
+      <div class="card card-teal">
+        <h2 class="card-label">VOTE TRANSCRIPT</h2>
+        <div id="voteBreakdown" class="terminal-feed"></div>
+      </div>
+      <div class="card card-teal">
+        <h2 class="card-label">FULL INTEL — BY CODENAME</h2>
+        <div class="alias-columns" id="groupedHistoryResults"></div>
+      </div>
+      <button type="button" class="btn btn-pink" id="backDashboardBtn">Return to Mission Control</button>
+      <footer class="site-footer">Made by ZAK</footer>
+    </section>
+
+    <!-- ===================== GAME RULES MODAL ===================== -->
+    <div id="rulesModal" class="overlay hidden">
+      <div class="rules-box">
+        <h2 class="rules-title">📋 GAME RULES</h2>
+        <div class="rules-content">
+          <h3>🎯 Objective</h3>
+          <p>3-5 players. One player is secretly the <strong>Imposter</strong>. The rest are <strong>Agents</strong>.</p>
+
+          <h3>📝 Word Pairs</h3>
+          <p>Each round, a pair of similar words is chosen (e.g. "Coffee" vs "Latte"). Agents receive one word, the Imposter gets the other. Nobody knows who has which word!</p>
+
+          <h3>✍️ Writing Rounds</h3>
+          <p>Over 5 rounds, each player writes <strong>one sentence</strong> per round that proves they know their secret word — without being too obvious!</p>
+
+          <h3>🗳️ Voting</h3>
+          <p>After all rounds, players read everyone's sentences and vote for who they think is the <strong>Imposter</strong> (the one with the different word).</p>
+
+          <h3>🏆 Scoring</h3>
+          <ul>
+            <li><strong>Agents:</strong> +2 if both you AND your teammate vote correctly. +1 if only you vote correctly.</li>
+            <li><strong>Imposter:</strong> +2 if NO ONE votes for you. +1 if only 1 person does. 0 if caught by 2+.</li>
+          </ul>
+
+          <h3>💡 Tips</h3>
+          <p>Be clever! Write something vague enough that the Imposter can't figure out the word, but specific enough that your teammates know you're legit.</p>
+        </div>
+        <button type="button" class="btn btn-pink" id="closeRulesBtn">CLOSE</button>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // Backend URL — after deploying to Railway, paste your URL below
+    // Example: "https://dirty-espionage-production.up.railway.app"
+    window.BACKEND_URL = "https://dirty-espionage-production.up.railway.app";
+  </script>
+  <script src="audio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Dirty Espionage</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
   <div class="scanlines" aria-hidden="true"></div>
 
   <header class="top-bar">

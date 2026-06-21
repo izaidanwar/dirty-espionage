@@ -78,7 +78,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     continue
 
                 if msg_type == "create_room":
-                    room = await rooms.create_room(player_id, real_name, websocket)
+                    max_players = int(data.get("maxPlayers", 3))
+                    max_players = max(3, min(5, max_players))  # clamp between 3-5
+                    room = await rooms.create_room(player_id, real_name, websocket, max_players)
                     joined = True
                     await websocket.send_json(
                         {

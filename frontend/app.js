@@ -13,8 +13,6 @@ const RECONNECT_WINDOW_MS = 60_000;
 const $ = (id) => document.getElementById(id);
 
 // DOM
-const profileChip = $("profileChip");
-const profileName = $("profileName");
 const statusDot = $("statusDot");
 const statusText = $("statusText");
 const muteBtn = $("muteBtn");
@@ -28,6 +26,9 @@ const decryptOverlay = $("decryptOverlay");
 const decryptCount = $("decryptCount");
 const decryptBar = $("decryptBar");
 const toastEl = $("toast");
+
+// Player count selector
+let selectedMaxPlayers = 3;
 
 let socket = null;
 let playerId = null;
@@ -109,10 +110,7 @@ function showScreen(name) {
 }
 
 function updateProfileChip() {
-  if (realName) {
-    profileChip.classList.remove("hidden");
-    profileName.textContent = realName;
-  }
+  // No longer uses header profile chip - nickname shown in dashboard pill
 }
 
 function wsUrl() {
@@ -156,8 +154,9 @@ function renderTerminalFeed(target, items) {
 
 function renderGroupedHistory(target, groups) {
   target.innerHTML = "";
-  const aliases = ["Alpha", "Bravo", "Charlie"];
-  for (const alias of aliases) {
+  const allAliases = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"];
+  const activeAliases = allAliases.slice(0, selectedMaxPlayers);
+  for (const alias of activeAliases) {
     const col = document.createElement("div");
     col.className = "alias-col";
     const color = players.find((p) => p.alias === alias)?.color || "var(--cyan)";
@@ -183,6 +182,7 @@ function renderLobby(data) {
   showScreen("lobby");
   $("roomCodeLabel").textContent = data.roomCode || roomCode;
   $("lobbyCount").textContent = String(data.count ?? 0);
+  if ($("lobbyNeeded")) $("lobbyNeeded").textContent = String(data.needed || selectedMaxPlayers);
   console.log("renderLobby called with:", data);
   const list = $("lobbyList");
   list.innerHTML = "";
@@ -203,7 +203,7 @@ function renderLobby(data) {
   const startBtn = $("startGameBtn");
   if (startBtn) {
     const isHost = waiting.length > 0 && waiting[0]?.id === playerId;
-    const enoughPlayers = waiting.length >= 3;
+    const enoughPlayers = waiting.length >= (selectedMaxPlayers || 3);
     startBtn.disabled = !(isHost && enoughPlayers);
   }
 }
@@ -408,7 +408,7 @@ function connect(mode, code = "") {
     AudioEngine.startAmbient();
 
     const payload = { playerId, realName };
-    if (mode === "create") send({ type: "create_room", ...payload });
+    if (mode === "create") send({ type: "create_room", maxPlayers: selectedMaxPlayers, ...payload });
     else if (mode === "join") send({ type: "join_room", roomCode: code.toUpperCase(), ...payload });
     else if (mode === "reconnect") send({ type: "reconnect", roomCode: code.toUpperCase(), ...payload });
   });
@@ -571,7 +571,8 @@ function handleMessage(data) {
       showScreen("voting");
       renderGroupedHistory($("groupedHistory"), groupedHistory);
       renderVoteButtons();
-      $("voteProgress").textContent = "Votes: 0 / 3";
+      const maxPlayers = data.needed || selectedMaxPlayers || 3;
+      $("voteProgress").textContent = `Votes: 0 / ${maxPlayers}`;
       break;
 
     case "vote_progress":
@@ -628,12 +629,11 @@ $("onboardForm").addEventListener("submit", (e) => {
 });
 
 $("createRoomBtn").addEventListener("click", () => {
+  // Read selected player count
+  const activeCountBtn = document.querySelector(".count-btn.active");
+  selectedMaxPlayers = activeCountBtn ? parseInt(activeCountBtn.dataset.count) : 3;
   connect("create");
   showScreen("lobby");
-});
-
-$("showJoinBtn").addEventListener("click", () => {
-  $("joinForm").classList.toggle("hidden");
 });
 
 $("joinForm").addEventListener("submit", (e) => {
@@ -659,6 +659,29 @@ $("skipBtn").addEventListener("click", () => {
 $("backDashboardBtn").addEventListener("click", () => {
   showScreen("dashboard");
   setStatus(false, "Offline");
+});
+
+// --- Player Count Selector ---
+document.querySelectorAll(".count-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".count-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedMaxPlayers = parseInt(btn.dataset.count);
+  });
+});
+
+// --- Game Rules Modal ---
+function openRulesModal() {
+  $("rulesModal").classList.remove("hidden");
+}
+function closeRulesModal() {
+  $("rulesModal").classList.add("hidden");
+}
+$("rulesBtnOnboard")?.addEventListener("click", openRulesModal);
+$("rulesBtnDashboard")?.addEventListener("click", openRulesModal);
+$("closeRulesBtn")?.addEventListener("click", closeRulesModal);
+$("rulesModal")?.addEventListener("click", (e) => {
+  if (e.target === $("rulesModal")) closeRulesModal();
 });
 
 muteBtn.addEventListener("click", () => {
