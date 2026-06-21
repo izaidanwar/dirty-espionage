@@ -132,6 +132,7 @@ function wsUrl() {
     url.pathname = url.pathname.replace(/\/+$/, "") + "/ws";
   }
   return url.toString();
+}
 
 function escapeHtml(t) {
   const d = document.createElement("div");
@@ -662,13 +663,21 @@ function handleMessage(data) {
 // --- Events ---
 $("onboardForm").addEventListener("submit", (e) => {
   e.preventDefault();
+  console.log("Onboard form submitted");
   const name = $("usernameInput").value.trim();
-  if (!name) return;
+  console.log("Name entered:", name);
+  if (!name) {
+    console.log("Name is empty, returning");
+    return;
+  }
   saveProfile(name);
   updateProfileChip();
   $("dashboardName").textContent = realName;
   showScreen("dashboard");
-  AudioEngine.unlock();
+  console.log("AudioEngine:", AudioEngine);
+  if (AudioEngine && AudioEngine.unlock) {
+    AudioEngine.unlock();
+  }
 });
 
 $("createRoomBtn").addEventListener("click", () => {
