@@ -34,7 +34,7 @@ WORD_PAIRS_PATH = Path(__file__).resolve().parent / "word_pairs.json"
 
 class Phase(str, Enum):
     LOBBY = "LOBBY"
-    ROUND_LOOP = "ROUND_LOOP"
+    FREE_CHAT = "FREE_CHAT"
     VOTING = "VOTING"
     REVEAL_SCORING = "REVEAL_SCORING"
 
@@ -132,6 +132,7 @@ class GameRoom:
     turn_deadline: float = 0.0
     max_players: int = 3
     _timer_task: asyncio.Task[None] | None = field(default=None, repr=False)
+    ready_to_vote: dict[str, bool] = field(default_factory=dict)
 
     def occupied_count(self) -> int:
         return len(self.players)
@@ -243,9 +244,10 @@ class GameRoom:
                     else self.word_pair["normal"]
                 )
 
-        self.phase = Phase.ROUND_LOOP
+        self.phase = Phase.FREE_CHAT
         self.round_num = 1
         self.current_turn_index = 0
+        self.ready_to_vote = {}
 
         await self.broadcast(
             {
@@ -257,7 +259,20 @@ class GameRoom:
         )
         for pid, slot in self.players.items():
             await self.send(pid, {"type": "your_word", "word": slot.word})
-        await self.begin_turn()
+
+        # Send suggestion prompts
+        suggestions = [
+            "Is it an action or object?",
+            "What color is it?",
+            "What's the shape?",
+            "Is it hard or soft?",
+            "Is it big or small?",
+            "Is it natural or man-made?"
+        ]
+        await self.broadcast({
+            "type": "suggestion_prompts",
+            "suggestions": suggestions
+        })
 
     async def begin_turn(self) -> None:
         self.cancel_timer()
@@ -310,13 +325,9 @@ class GameRoom:
             await self.begin_turn()
 
     async def handle_submit_sentence(self, player_id: str, text: str) -> None:
-        if self.phase != Phase.ROUND_LOOP:
-            await self.send(player_id, {"type": "error", "message": "Not in writing phase."})
+        if self.phase != Phase.FREE_CHAT:
+            await self.send(player_id, {"type": "error", "message": "Not in free chat phase."})
             return
-        if player_id != self.current_player_id():
-            await self.send(player_id, {"type": "error", "message": "It is not your turn."})
-            return
-        self.cancel_timer()
         valid, error = validate_sentence(text)
         if not valid:
             await self.send(player_id, {"type": "error", "message": error})
@@ -342,11 +353,9 @@ class GameRoom:
                 "history": self.history_payload(),
             }
         )
-        await self.advance_turn()
-        await self.broadcast(self.turn_payload())
 
     async def handle_typing(self, player_id: str, is_typing: bool) -> None:
-        if self.phase != Phase.ROUND_LOOP:
+        if self.phase != Phase.FREE_CHAT:
             return
         slot = self.players.get(player_id)
         if not slot:
@@ -364,6 +373,61 @@ class GameRoom:
                     "isTyping": is_typing,
                 },
             )
+
+    async def handle_ready_to_vote(self, player_id: str) -> None:
+        if self.phase != Phase.FREE_CHAT:
+            await self.send(player_id, {"type": "error", "message": "Not in free chat phase."})
+            return
+        if player_id not in self.players:
+            return
+
+        self.ready_to_vote[player_id] = True
+        await self.broadcast(
+            {
+                "type": "vote_ready_update",
+                "playerId": player_id,
+                "readyCount": len(self.ready_to_vote),
+                "totalPlayers": len(self.players),
+            }
+        )
+
+        if len(self.ready_to_vote) >= len(self.players):
+            await self.begin_voting()
+
+    async def handle_rematch(self, player_id: str) -> None:
+        if self.phase != Phase.REVEAL_SCORING:
+            await self.send(player_id, {"type": "error", "message": "Game not over yet."})
+            return
+        if player_id != self.host_id:
+            await self.send(player_id, {"type": "error", "message": "Only host can start rematch."})
+            return
+
+        # Reset game state for rematch
+        self.phase = Phase.LOBBY
+        self.sentences = []
+        self.votes = {}
+        self.ready_to_vote = {}
+        self.round_num = 1
+        self.current_turn_index = 0
+        self.word_pair = {}
+        self.agents_get_dirty = True
+        self.imposter_id = ""
+
+        # Reset player game state
+        for slot in self.players.values():
+            slot.role = ""
+            slot.word = ""
+            slot.round_alias = ""
+            slot.color = ""
+
+        await self.broadcast(
+            {
+                "type": "rematch_ready",
+                "roomCode": self.code,
+                "phase": self.phase.value,
+                "players": self.lobby_roster(),
+            }
+        )
 
     async def begin_voting(self) -> None:
         self.cancel_timer()
@@ -501,8 +565,15 @@ class GameRoom:
                     "sync": True,
                 }
             )
-        if self.phase == Phase.ROUND_LOOP:
-            messages.append(self.turn_payload())
+        if self.phase == Phase.FREE_CHAT:
+            messages.append(
+                {
+                    "type": "vote_ready_update",
+                    "playerId": player_id,
+                    "readyCount": len(self.ready_to_vote),
+                    "totalPlayers": len(self.players),
+                }
+            )
         elif self.phase == Phase.VOTING:
             messages.append(
                 {
@@ -751,6 +822,8 @@ class RoomManager:
             await room.handle_cast_vote(player_id, str(data.get("targetId", "")))
         elif msg_type == "typing":
             await room.handle_typing(player_id, bool(data.get("isTyping", False)))
+        elif msg_type == "ready_to_vote":
+            await room.handle_ready_to_vote(player_id)
 
     async def start_game(self, player_id: str) -> None:
         room = self.get_room_for_player(player_id)
@@ -768,11 +841,11 @@ class RoomManager:
         room = self.get_room_for_player(player_id)
         if not room:
             return
-        if player_id != room.current_player_id():
+        # Skip turn not needed in free chat mode
+        if room.phase != Phase.FREE_CHAT:
             return
-        if room.phase != Phase.ROUND_LOOP:
-            return
-        await room.skip_current_turn()
+        # In free chat, skip is not applicable
+        pass
 
     async def finish_game_cleanup(self, room: GameRoom) -> None:
         for pid in list(room.players):
