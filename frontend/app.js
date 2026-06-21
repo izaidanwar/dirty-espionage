@@ -670,9 +670,7 @@ $("joinForm").addEventListener("submit", (e) => {
 $("leaveRoomBtn").addEventListener("click", leaveRoom);
 $("leaveRoomBtnVote")?.addEventListener("click", leaveRoom);
 
-$("startGameBtn")?.addEventListener("click", () => {
-  send({ type: "start_game" });
-});
+// startGameBtn listener moved to attachGameButtonListeners function
 
 $("skipBtn")?.addEventListener("click", () => {
   send({ type: "skip_turn" });
@@ -766,6 +764,16 @@ function attachGameButtonListeners() {
       send({ type: "ready_to_vote" });
     });
     readyToVoteBtn.setAttribute('data-listener-attached', 'true');
+  }
+
+  const startGameBtn = $("startGameBtn");
+  if (startGameBtn && !startGameBtn.hasAttribute('data-listener-attached')) {
+    console.log("Attaching start game button listener");
+    startGameBtn.addEventListener("click", () => {
+      console.log("Start game button clicked");
+      send({ type: "start_game" });
+    });
+    startGameBtn.setAttribute('data-listener-attached', 'true');
   }
 }
 
