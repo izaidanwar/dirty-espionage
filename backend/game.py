@@ -440,6 +440,7 @@ class GameRoom:
         )
 
     async def begin_voting_for_player(self, player_id: str) -> None:
+        logger.info(f"begin_voting_for_player called for {player_id}")
         # Notify all players that someone is ready to vote
         player = self.players.get(player_id)
         if player:
@@ -452,6 +453,7 @@ class GameRoom:
             )
 
         # Send voting start to this player only
+        logger.info(f"Sending voting_start to {player_id}")
         await self.send(
             player_id,
             {
@@ -462,6 +464,7 @@ class GameRoom:
                 "groupedHistory": self.grouped_history(),
             }
         )
+        logger.info(f"voting_start sent to {player_id}")
 
     def grouped_history(self) -> dict[str, list[dict[str, Any]]]:
         active_aliases = ALIASES[:self.max_players]
