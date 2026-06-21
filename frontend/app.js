@@ -771,16 +771,27 @@ $("sentenceInput").addEventListener("click", (e) => {
   }
 });
 
-$("submitBtn").addEventListener("click", (e) => {
-  e.preventDefault();
+function sendMessage() {
   const text = $("sentenceInput").value.trim();
-  if (!text || currentPlayerId !== playerId) return;
+  if (!text) return;
   send({ type: "submit_sentence", text });
   send({ type: "typing", isTyping: false });
   AudioEngine.click();
-  $("submitBtn").disabled = true;
   $("sentenceInput").value = "";
   $("charCount").textContent = "0";
+  $("sentenceInput").focus();
+}
+
+$("submitBtn").addEventListener("click", (e) => {
+  e.preventDefault();
+  sendMessage();
+});
+
+$("sentenceInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
