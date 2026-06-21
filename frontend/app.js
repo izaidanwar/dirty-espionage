@@ -144,7 +144,7 @@ function escapeHtml(t) {
 function renderTerminalFeed(target, items) {
   target.innerHTML = "";
   if (!items?.length) {
-    target.innerHTML = '<p class="muted">// awaiting transmissions…</p>';
+    target.innerHTML = '<p class="muted">No messages yet...</p>';
     return;
   }
   for (const item of items) {
@@ -152,7 +152,7 @@ function renderTerminalFeed(target, items) {
     row.className = "feed-line";
     const cls = item.skipped ? "skipped" : "";
     row.innerHTML = `
-      <div class="meta">R${item.round} · ${escapeHtml(item.alias)}</div>
+      <div class="meta">${escapeHtml(item.alias)}</div>
       <div class="${cls}">${escapeHtml(item.text)}</div>
     `;
     target.appendChild(row);
@@ -216,64 +216,28 @@ function renderLobby(data) {
 }
 
 function updateTurnUI() {
-  const isFreeChat = phase === "FREE_CHAT";
   const input = $("sentenceInput");
   const submit = $("submitBtn");
   const readyToVote = $("readyToVoteBtn");
   const banner = $("turnBanner");
   const panel = $("inputPanel");
-  const roundLabel = $("roundLabel");
 
-  // In free chat mode, input is always enabled
+  // Input is always enabled
   submit.disabled = false;
   readyToVote.disabled = false;
-  roundLabel.textContent = phase === "FREE_CHAT" ? `[R${currentRound}/5]` : "";
 
   // Visual indication for input state
   input.style.opacity = "1";
 
-  panel.classList.toggle("pulse-active", isFreeChat);
-
-  if (phase === "FREE_CHAT") {
-    banner.className = "turn-banner active";
-    banner.textContent = "Free Chat — Discuss and write sentences freely!";
-    setTimeout(() => input.focus(), 100);
-  } else {
-    banner.className = "turn-banner";
-    banner.textContent = "Stand by…";
-  }
+  panel.classList.toggle("pulse-active", true);
+  banner.className = "turn-banner active";
+  banner.textContent = "Chat freely!";
+  setTimeout(() => input.focus(), 100);
 }
 
 function startTurnTimer(deadline) {
-  stopTurnTimer();
-  const fill = $("timerFill");
-  const text = $("timerText");
-  const wrap = $("timerWrap");
-
-  function tick() {
-    const remaining = Math.max(0, deadline - Date.now() / 1000);
-    const pct = (remaining / 30) * 100;
-    fill.style.strokeDasharray = `${pct}, 100`;
-    const sec = Math.ceil(remaining);
-    text.textContent = String(sec);
-
-    fill.classList.toggle("danger", sec <= 5);
-    $("turnBanner").classList.toggle("urgent", sec <= 5 && currentPlayerId === playerId);
-
-    if (sec <= 5 && sec !== lastTickSecond) {
-      lastTickSecond = sec;
-      if (currentPlayerId === playerId) AudioEngine.heartbeat();
-      else AudioEngine.tick();
-    } else if (sec > 5 && sec !== lastTickSecond) {
-      lastTickSecond = sec;
-    }
-
-    if (remaining <= 0) stopTurnTimer();
-  }
-
-  wrap.classList.remove("hidden");
-  tick();
-  turnTimerInterval = setInterval(tick, 200);
+  // Timer disabled - chat is now free-form
+  return;
 }
 
 function stopTurnTimer() {
@@ -774,6 +738,9 @@ $("sentenceInput").addEventListener("click", (e) => {
 function sendMessage() {
   const text = $("sentenceInput").value.trim();
   if (!text) return;
+  console.log("Sending message:", text);
+  console.log("Socket state:", socket?.readyState);
+  console.log("Player ID:", playerId);
   send({ type: "submit_sentence", text });
   send({ type: "typing", isTyping: false });
   AudioEngine.click();
