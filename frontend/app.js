@@ -678,10 +678,6 @@ $("skipBtn").addEventListener("click", () => {
   send({ type: "skip_turn" });
 });
 
-$("readyToVoteBtn").addEventListener("click", () => {
-  send({ type: "ready_to_vote" });
-});
-
 $("rematchBtn").addEventListener("click", () => {
   send({ type: "rematch" });
 });
@@ -749,10 +745,28 @@ function sendMessage() {
   $("sentenceInput").focus();
 }
 
-$("submitBtn").addEventListener("click", (e) => {
-  e.preventDefault();
-  sendMessage();
-});
+const submitBtn = $("submitBtn");
+console.log("Submit button found:", submitBtn);
+if (submitBtn) {
+  submitBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    console.log("Submit button clicked");
+    sendMessage();
+  });
+} else {
+  console.error("Submit button not found!");
+}
+
+const readyToVoteBtn = $("readyToVoteBtn");
+console.log("Ready to vote button found:", readyToVoteBtn);
+if (readyToVoteBtn) {
+  readyToVoteBtn.addEventListener("click", () => {
+    console.log("Ready to vote button clicked");
+    send({ type: "ready_to_vote" });
+  });
+} else {
+  console.error("Ready to vote button not found!");
+}
 
 $("sentenceInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
