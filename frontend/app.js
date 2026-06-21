@@ -270,15 +270,15 @@ function renderVoteButtons() {
 }
 
 function renderSuggestions(suggestions) {
-  const container = $("suggestionList");
-  if (!container) return;
-  container.innerHTML = "";
-  suggestions.forEach(suggestion => {
-    const div = document.createElement("div");
-    div.className = "suggestion-item";
-    div.textContent = suggestion;
-    container.appendChild(div);
-  });
+  const input = $("sentenceInput");
+  if (!input) return;
+  if (suggestions && suggestions.length > 0) {
+    // Cycle through suggestions as placeholder
+    const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+    input.placeholder = `Try: ${randomSuggestion}`;
+  } else {
+    input.placeholder = "Write your sentence here...";
+  }
 }
 
 function updateVoteReadyStatus(readyCount, totalPlayers) {
@@ -529,6 +529,10 @@ function handleMessage(data) {
 
     case "vote_ready_update":
       updateVoteReadyStatus(data.readyCount, data.totalPlayers);
+      const player = players.find(p => p.id === data.playerId);
+      if (player) {
+        showToast(`${player.alias} is ready to vote!`);
+      }
       break;
 
     case "rematch_ready":

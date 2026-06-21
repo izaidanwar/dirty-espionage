@@ -160,7 +160,7 @@
 
       <!-- Chat/Intel Feed -->
       <div class="card card-chat">
-        <div class="terminal-feed" id="history"></div>
+        <div class="terminal-feed" id="history" style="overflow-y: auto; max-height: 300px;"></div>
       </div>
 
       <!-- Input Panel -->
@@ -176,8 +176,8 @@
         </div>
       </div>
 
-      <!-- Suggestion Prompts -->
-      <div class="card card-teal" id="suggestionPanel">
+      <!-- Suggestion Prompts (hidden - now in placeholder) -->
+      <div class="card card-teal" id="suggestionPanel" style="display: none;">
         <h2 class="card-label mono">// SUGGESTIONS</h2>
         <div class="suggestion-list" id="suggestionList"></div>
       </div>
