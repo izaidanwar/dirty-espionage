@@ -438,6 +438,12 @@ function connect(mode, code = "") {
     AudioEngine.unlock();
     AudioEngine.startAmbient();
 
+    // Ensure playerId is set
+    if (!playerId) {
+      playerId = crypto.randomUUID();
+      localStorage.setItem(STORAGE.playerId, playerId);
+    }
+
     const payload = { playerId, realName };
     if (mode === "create") send({ type: "create_room", maxPlayers: selectedMaxPlayers, ...payload });
     else if (mode === "join") send({ type: "join_room", roomCode: code.toUpperCase(), ...payload });
