@@ -178,10 +178,16 @@
           <textarea id="sentenceInput" placeholder="Write your sentence here..." maxlength="150" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
           <div class="input-meta">
             <span class="char-count"><span id="charCount">0</span>/150</span>
-            <button type="submit" class="btn btn-teal" id="submitBtn" disabled>Lock Sentence</button>
-            <button type="button" class="btn btn-danger btn-sm" id="skipBtn" disabled>Skip Turn</button>
+            <button type="submit" class="btn btn-teal" id="submitBtn">Send Message</button>
+            <button type="button" class="btn btn-pink" id="readyToVoteBtn">Go for Voting</button>
           </div>
         </form>
+      </div>
+
+      <!-- Suggestion Prompts -->
+      <div class="card card-teal" id="suggestionPanel">
+        <h2 class="card-label mono">// SUGGESTIONS</h2>
+        <div class="suggestion-list" id="suggestionList"></div>
       </div>
 
       <footer class="site-footer">Made by ZAK</footer>
@@ -233,6 +239,7 @@
         <h2 class="card-label">FULL INTEL — BY CODENAME</h2>
         <div class="alias-columns" id="groupedHistoryResults"></div>
       </div>
+      <button type="button" class="btn btn-pink" id="rematchBtn" style="display: none;">Rematch</button>
       <button type="button" class="btn btn-pink" id="backDashboardBtn">Return to Mission Control</button>
       <footer class="site-footer">Made by ZAK</footer>
     </section>
