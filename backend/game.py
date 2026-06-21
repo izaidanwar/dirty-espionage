@@ -85,7 +85,7 @@ def calculate_scores(
 
 
 def generate_room_code() -> str:
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=3))
+    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"ROOM-{suffix}"
 
 
@@ -659,8 +659,13 @@ class RoomManager:
         self, player_id: str, real_name: str, websocket: WebSocket, max_players: int = 3
     ) -> GameRoom:
         code = generate_room_code()
+        attempts = 0
         while code in self.rooms:
+            attempts += 1
             code = generate_room_code()
+            if attempts > 100:
+                logger.error("Failed to generate unique room code after 100 attempts")
+                code = generate_room_code()
 
         slot = PlayerSlot(player_id=player_id, real_name=real_name, websocket=websocket)
         room = GameRoom(
@@ -672,14 +677,18 @@ class RoomManager:
         self.rooms[code] = room
         self.player_room[player_id] = code
 
+        logger.info("Created room %s for player %s. Total rooms: %d", code, player_id, len(self.rooms))
         await self.send_room_state(room, player_id)
         return room
 
     async def join_room(
         self, code: str, player_id: str, real_name: str, websocket: WebSocket
     ) -> tuple[GameRoom | None, str | None]:
+        logger.info("Player %s attempting to join room %s", player_id, code)
+        logger.info("Current rooms: %s", list(self.rooms.keys()))
         room = self.get_room(code)
         if not room:
+            logger.warning("Room %s not found. Available rooms: %s", code, list(self.rooms.keys()))
             return None, "Room not found. Check the code and try again."
 
         if player_id in room.players:
