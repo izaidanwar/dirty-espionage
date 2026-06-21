@@ -421,6 +421,7 @@ function connect(mode, code = "") {
 
   socket.addEventListener("close", () => {
     clearTimeout(connectionTimeout);
+    console.log("Socket closed");
     setStatus(false, "Reconnecting…");
     if (inRoom) markDisconnected();
     scheduleReconnect();
@@ -579,17 +580,22 @@ function handleMessage(data) {
       break;
 
     case "voting_start":
+      console.log("Received voting_start message");
+      console.log("Phase:", data.phase);
+      console.log("Players:", data.players);
       phase = data.phase;
       players = data.players || [];
       history = data.history || [];
       groupedHistory = data.groupedHistory || {};
       hasVoted = !!data.alreadyVoted;
       stopTurnTimer();
+      console.log("Showing voting screen");
       showScreen("voting");
       renderGroupedHistory($("groupedHistory"), groupedHistory);
       renderVoteButtons();
       const maxPlayers = data.needed || selectedMaxPlayers || 3;
       $("voteProgress").textContent = `Votes: 0 / ${maxPlayers}`;
+      console.log("Voting screen shown");
       break;
 
     case "vote_progress":
@@ -775,12 +781,15 @@ function attachGameButtonListeners() {
     readyToVoteBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       console.log("Ready to vote button clicked");
       console.log("Current phase:", phase);
       console.log("Socket state:", socket?.readyState);
+      console.log("Player ID:", playerId);
+      console.log("In room:", inRoom);
       send({ type: "ready_to_vote" });
       console.log("Sent ready_to_vote message");
-    });
+    }, true); // Use capture phase
     readyToVoteBtn.setAttribute('data-listener-attached', 'true');
   }
 
