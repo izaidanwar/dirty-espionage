@@ -140,6 +140,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 await rooms.start_game(player_id)
             elif msg_type == "skip_turn":
                 await rooms.skip_turn(player_id)
+            elif msg_type == "ready_to_vote":
+                await rooms.handle_ready_to_vote(player_id)
+            elif msg_type == "rematch":
+                await rooms.handle_rematch(player_id)
             elif msg_type in ("submit_sentence", "cast_vote", "typing"):
                 await rooms.handle_message(player_id, data)
             else:
