@@ -114,17 +114,24 @@ function updateProfileChip() {
 }
 
 function wsUrl() {
-  // Check if backend URL is configured (for Vercel + Railway deployment)
-  const backendUrl = window.BACKEND_URL || "";
-  if (backendUrl) {
-    const p = backendUrl.startsWith("https") ? "wss:" : "ws:";
-    const host = backendUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    return `${p}//${host}/ws`;
+  const configured = (window.BACKEND_URL || "").trim();
+  const base = configured || "https://dirty-espionage-production.up.railway.app";
+  const normalized = base.replace(/\/+$/, "");
+
+  // Accept either full URLs or plain hostnames.
+  const isHttp = /^https?:\/\//i.test(normalized);
+  const isWs = /^wss?:\/\//i.test(normalized);
+  const raw = isHttp || isWs ? normalized : `https://${normalized}`;
+
+  const url = new URL(raw);
+  const protocol = url.protocol === "https:" ? "wss:" : url.protocol === "http:" ? "ws:" : url.protocol;
+  url.protocol = protocol;
+  if (!url.pathname || url.pathname === "/") {
+    url.pathname = "/ws";
+  } else if (!url.pathname.endsWith("/ws")) {
+    url.pathname = url.pathname.replace(/\/+$/, "") + "/ws";
   }
-  // Default: use current host (for local development or single-domain deployment)
-  const p = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${p}//${window.location.host}/ws`;
-}
+  return url.toString();
 
 function escapeHtml(t) {
   const d = document.createElement("div");
@@ -183,7 +190,6 @@ function renderLobby(data) {
   $("roomCodeLabel").textContent = data.roomCode || roomCode;
   $("lobbyCount").textContent = String(data.count ?? 0);
   if ($("lobbyNeeded")) $("lobbyNeeded").textContent = String(data.needed || selectedMaxPlayers);
-  console.log("renderLobby called with:", data);
   const list = $("lobbyList");
   list.innerHTML = "";
   const waiting = data.waiting || data.roster || [];
@@ -199,12 +205,12 @@ function renderLobby(data) {
       list.appendChild(li);
     }
   }
-  // Enable start button if host and enough players
+  // Enable start button only for the actual host.
   const startBtn = $("startGameBtn");
   if (startBtn) {
-    const isHost = waiting.length > 0 && waiting[0]?.id === playerId;
-    const enoughPlayers = waiting.length >= (selectedMaxPlayers || 3);
-    startBtn.disabled = !(isHost && enoughPlayers);
+    const isHostNow = data.isHost ?? (waiting.length > 0 && waiting[0]?.id === playerId);
+    const enoughPlayers = waiting.length >= (data.needed || selectedMaxPlayers || 3);
+    startBtn.disabled = !(isHostNow && enoughPlayers);
   }
 }
 
@@ -452,6 +458,7 @@ function connect(mode, code = "") {
   socket.addEventListener("error", () => {
     clearTimeout(connectionTimeout);
     setStatus(false, "Connection error");
+    showToast("Unable to reach the game server. Check the backend URL and try again.");
   });
 }
 
