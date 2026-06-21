@@ -670,15 +670,15 @@ $("joinForm").addEventListener("submit", (e) => {
 $("leaveRoomBtn").addEventListener("click", leaveRoom);
 $("leaveRoomBtnVote")?.addEventListener("click", leaveRoom);
 
-$("startGameBtn").addEventListener("click", () => {
+$("startGameBtn")?.addEventListener("click", () => {
   send({ type: "start_game" });
 });
 
-$("skipBtn").addEventListener("click", () => {
+$("skipBtn")?.addEventListener("click", () => {
   send({ type: "skip_turn" });
 });
 
-$("rematchBtn").addEventListener("click", () => {
+$("rematchBtn")?.addEventListener("click", () => {
   send({ type: "rematch" });
 });
 
@@ -745,28 +745,39 @@ function sendMessage() {
   $("sentenceInput").focus();
 }
 
-const submitBtn = $("submitBtn");
-console.log("Submit button found:", submitBtn);
-if (submitBtn) {
-  submitBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    console.log("Submit button clicked");
-    sendMessage();
-  });
-} else {
-  console.error("Submit button not found!");
+// Attach button listeners when they become available
+function attachGameButtonListeners() {
+  const submitBtn = $("submitBtn");
+  if (submitBtn && !submitBtn.hasAttribute('data-listener-attached')) {
+    console.log("Attaching submit button listener");
+    submitBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      console.log("Submit button clicked");
+      sendMessage();
+    });
+    submitBtn.setAttribute('data-listener-attached', 'true');
+  }
+
+  const readyToVoteBtn = $("readyToVoteBtn");
+  if (readyToVoteBtn && !readyToVoteBtn.hasAttribute('data-listener-attached')) {
+    console.log("Attaching ready to vote button listener");
+    readyToVoteBtn.addEventListener("click", () => {
+      console.log("Ready to vote button clicked");
+      send({ type: "ready_to_vote" });
+    });
+    readyToVoteBtn.setAttribute('data-listener-attached', 'true');
+  }
 }
 
-const readyToVoteBtn = $("readyToVoteBtn");
-console.log("Ready to vote button found:", readyToVoteBtn);
-if (readyToVoteBtn) {
-  readyToVoteBtn.addEventListener("click", () => {
-    console.log("Ready to vote button clicked");
-    send({ type: "ready_to_vote" });
-  });
-} else {
-  console.error("Ready to vote button not found!");
-}
+// Try to attach listeners now
+attachGameButtonListeners();
+
+// Also try when screen changes
+const originalShowScreen = showScreen;
+showScreen = function(screenName) {
+  originalShowScreen(screenName);
+  setTimeout(() => attachGameButtonListeners(), 100);
+};
 
 $("sentenceInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
