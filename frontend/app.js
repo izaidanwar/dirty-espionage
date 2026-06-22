@@ -21,6 +21,7 @@ const screenDashboard = $("screenDashboard");
 const screenLobby = $("screenLobby");
 const screenGame = $("screenGame");
 const screenVoting = $("screenVoting");
+const screenVoteWaiting = $("screenVoteWaiting");
 const screenResults = $("screenResults");
 const decryptOverlay = $("decryptOverlay");
 const decryptCount = $("decryptCount");
@@ -104,6 +105,7 @@ function showScreen(name) {
     lobby: screenLobby,
     game: screenGame,
     voting: screenVoting,
+    voteWaiting: screenVoteWaiting,
     results: screenResults,
   };
   Object.entries(map).forEach(([k, el]) => el.classList.toggle("hidden", k !== name));
@@ -528,12 +530,13 @@ function handleMessage(data) {
       renderSuggestions(data.suggestions || []);
       break;
 
-    case "player_ready_to_vote":
+    case "player_ready_to_vote": {
       const player = players.find(p => p.id === data.playerId);
       if (player) {
-        showToast(`${player.alias} is ready to vote`);
+        showToast(`🗳️ ${player.alias} is ready to vote!`);
       }
       break;
+    }
 
     case "rematch_ready":
       handleRematchReady();
@@ -783,10 +786,18 @@ function attachGameButtonListeners() {
       e.stopPropagation();
       e.stopImmediatePropagation();
       console.log("Ready to vote button clicked");
-      console.log("Current phase:", phase);
-      console.log("Socket state:", socket?.readyState);
-      console.log("Player ID:", playerId);
-      console.log("In room:", inRoom);
+      
+      // Immediately show voting screen
+      showScreen("voting");
+      renderGroupedHistory($("groupedHistory"), groupedHistory);
+      renderVoteButtons();
+      const maxPlayers = selectedMaxPlayers || 3;
+      $("voteProgress").textContent = `Votes: 0 / ${maxPlayers}`;
+      
+      // Disable button to prevent double-clicks
+      readyToVoteBtn.disabled = true;
+      
+      // Send ready_to_vote to server
       send({ type: "ready_to_vote" });
       console.log("Sent ready_to_vote message");
     }, true); // Use capture phase

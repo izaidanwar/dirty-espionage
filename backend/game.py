@@ -387,9 +387,21 @@ class GameRoom:
             logger.warning(f"Player {player_id} not found in room")
             return
 
-        # Immediately start voting for this player
-        logger.info(f"Starting voting for player {player_id}")
-        await self.begin_voting_for_player(player_id)
+        # Mark player as ready to vote
+        self.ready_to_vote[player_id] = True
+
+        # Broadcast player_ready_to_vote to all OTHER players
+        player = self.players.get(player_id)
+        if player:
+            await self.broadcast(
+                {
+                    "type": "player_ready_to_vote",
+                    "playerId": player_id,
+                    "playerAlias": player.alias,
+                    "readyCount": len(self.ready_to_vote),
+                    "totalPlayers": len(self.players),
+                }
+            )
 
     async def handle_rematch(self, player_id: str) -> None:
         if self.phase != Phase.REVEAL_SCORING:
@@ -439,33 +451,6 @@ class GameRoom:
             }
         )
 
-    async def begin_voting_for_player(self, player_id: str) -> None:
-        logger.info(f"begin_voting_for_player called for {player_id}")
-        # Notify all players that someone is ready to vote
-        player = self.players.get(player_id)
-        if player:
-            await self.broadcast(
-                {
-                    "type": "player_ready_to_vote",
-                    "playerId": player_id,
-                    "playerAlias": player.alias,
-                }
-            )
-
-        # Send voting start to this player only
-        logger.info(f"Sending voting_start to {player_id}")
-        await self.send(
-            player_id,
-            {
-                "type": "voting_start",
-                "phase": Phase.VOTING.value,
-                "players": self.game_roster(),
-                "history": self.history_payload(),
-                "groupedHistory": self.grouped_history(),
-            }
-        )
-        logger.info(f"voting_start sent to {player_id}")
-
     def grouped_history(self) -> dict[str, list[dict[str, Any]]]:
         active_aliases = ALIASES[:self.max_players]
         groups: dict[str, list[dict[str, Any]]] = {a: [] for a in active_aliases}
@@ -476,8 +461,12 @@ class GameRoom:
         return groups
 
     async def handle_cast_vote(self, player_id: str, target_id: str) -> None:
+        # Allow voting from FREE_CHAT phase if player has marked themselves ready
         if self.phase != Phase.VOTING and self.phase != Phase.FREE_CHAT:
             await self.send(player_id, {"type": "error", "message": "Voting is not open."})
+            return
+        if self.phase == Phase.FREE_CHAT and player_id not in self.ready_to_vote:
+            await self.send(player_id, {"type": "error", "message": "You must click 'Go for Voting' first."})
             return
         if target_id == player_id:
             await self.send(player_id, {"type": "error", "message": "You cannot vote for yourself."})
