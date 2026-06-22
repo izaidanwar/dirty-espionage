@@ -9,7 +9,7 @@ const STORAGE = {
   disconnectedAt: "de_disconnectedAt",
 };
 
-const RECONNECT_WINDOW_MS = 60_000;
+const RECONNECT_WINDOW_MS = 300_000;
 const $ = (id) => document.getElementById(id);
 
 // DOM
