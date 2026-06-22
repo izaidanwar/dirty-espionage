@@ -602,6 +602,7 @@ function handleMessage(data) {
       break;
 
     case "vote_progress":
+      console.log("Vote progress received:", data);
       $("voteProgress").textContent = `Votes: ${data.votesCast} / ${data.votesNeeded}`;
       const voteProgressWaiting = $("voteProgressWaiting");
       if (voteProgressWaiting) {

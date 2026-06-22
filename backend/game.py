@@ -286,13 +286,13 @@ class GameRoom:
     async def _turn_timeout(self) -> None:
         try:
             await asyncio.sleep(TURN_TIMEOUT_SEC)
-            if self.phase == Phase.ROUND_LOOP:
+            if self.phase == Phase.FREE_CHAT:
                 await self.skip_current_turn()
         except asyncio.CancelledError:
             pass
 
     async def skip_current_turn(self) -> None:
-        if self.phase != Phase.ROUND_LOOP:
+        if self.phase != Phase.FREE_CHAT:
             return
         current = self.current_player_id()
         if not current:
@@ -397,7 +397,7 @@ class GameRoom:
                 {
                     "type": "player_ready_to_vote",
                     "playerId": player_id,
-                    "playerAlias": player.alias,
+                    "playerAlias": player.round_alias,
                     "readyCount": len(self.ready_to_vote),
                     "totalPlayers": len(self.players),
                 }
@@ -461,6 +461,7 @@ class GameRoom:
         return groups
 
     async def handle_cast_vote(self, player_id: str, target_id: str) -> None:
+        logger.info(f"Vote received from {player_id} for {target_id}")
         # Allow voting from FREE_CHAT phase if player has marked themselves ready
         if self.phase != Phase.VOTING and self.phase != Phase.FREE_CHAT:
             await self.send(player_id, {"type": "error", "message": "Voting is not open."})
@@ -479,6 +480,7 @@ class GameRoom:
             return
 
         self.votes[player_id] = target_id
+        logger.info(f"Votes: {len(self.votes)}/{len(self.players)}")
 
         # Set phase to voting if not already
         if self.phase == Phase.FREE_CHAT:
@@ -498,8 +500,11 @@ class GameRoom:
 
         # Check if all active players have voted
         if len(self.votes) >= len(self.players):
+            logger.info("All votes received")
+            logger.info("Starting reveal countdown")
             await self.broadcast({"type": "reveal_countdown", "seconds": 3})
             await asyncio.sleep(3)
+            logger.info("Calling reveal_and_score()")
             await self.reveal_and_score()
 
     async def reveal_and_score(self) -> None:
