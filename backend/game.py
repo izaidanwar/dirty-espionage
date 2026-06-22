@@ -27,7 +27,7 @@ MAX_PLAYERS = 3
 MAX_ROUNDS = 1
 MAX_SENTENCE_LEN = 150
 TURN_TIMEOUT_SEC = 90
-RECONNECT_WINDOW_SEC = 60
+RECONNECT_WINDOW_SEC = 300
 SENTENCE_PATTERN = re.compile(r"^[^.!?]+[.!?]$")
 WORD_PAIRS_PATH = Path(__file__).resolve().parent / "word_pairs.json"
 
